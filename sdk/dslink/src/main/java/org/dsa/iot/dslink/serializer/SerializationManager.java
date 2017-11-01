@@ -1,15 +1,20 @@
 package org.dsa.iot.dslink.serializer;
 
-import org.dsa.iot.dslink.node.*;
-import org.dsa.iot.dslink.provider.*;
-import org.dsa.iot.dslink.util.*;
-import org.dsa.iot.dslink.util.json.*;
-import org.slf4j.*;
-import java.io.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import javax.crypto.*;
-import javax.crypto.spec.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import org.dsa.iot.dslink.node.Node;
+import org.dsa.iot.dslink.node.NodeManager;
+import org.dsa.iot.dslink.provider.LoopProvider;
+import org.dsa.iot.dslink.util.FileUtils;
+import org.dsa.iot.dslink.util.UrlBase64;
+import org.dsa.iot.dslink.util.json.JsonObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handles automatic serialization and deserialization.
@@ -25,6 +30,7 @@ public class SerializationManager {
 
     private final Deserializer deserializer;
     private final Serializer serializer;
+    private boolean serializing = false;
     private ScheduledFuture<?> future;
 
     private SecretKeySpec secretKeySpec;
@@ -59,12 +65,16 @@ public class SerializationManager {
         future = LoopProvider.getProvider().schedulePeriodic(new Runnable() {
             @Override
             public void run() {
+                if (serializing) {
+                    return;
+                }
                 boolean c = changed.getAndSet(false);
                 if (c) {
+                    serializing = true;
                     serialize();
                 }
             }
-        }, 5, 5, TimeUnit.SECONDS);
+        }, 10, 30, TimeUnit.SECONDS);
     }
 
     public synchronized void stop() {
@@ -75,9 +85,8 @@ public class SerializationManager {
     }
 
     /**
-     * Serializes the data from the node manager into the file based on the
-     * path. Manually calling this is redundant as a timer will automatically
-     * handle serialization.
+     * Serializes the data from the node manager into the file based on the path. Manually calling
+     * this is redundant as a timer will automatically handle serialization.
      */
     public void serialize() {
         try {
@@ -140,6 +149,8 @@ public class SerializationManager {
             }
         } catch (IOException e) {
             LOGGER.error("Failed to save configuration database", e);
+        } finally {
+            serializing = false;
         }
     }
 
@@ -196,11 +207,10 @@ public class SerializationManager {
     }
 
     /**
-     * Decrypts passwords that were encrypted by the encrypt method.  This is backwards
-     * compatible with older unencrypted passwords.
+     * Decrypts passwords that were encrypted by the encrypt method.  This is backwards compatible
+     * with older unencrypted passwords.
      *
-     * @param pass Base64 encoding of the password to decrypt, can be encrypted or
-     *             unencrypted.
+     * @param pass Base64 encoding of the password to decrypt, can be encrypted or unencrypted.
      * @return An unencrypted password.
      */
     synchronized String decrypt(Node node, String pass) {
@@ -217,8 +227,7 @@ public class SerializationManager {
     }
 
     /**
-     * Encrypts passwords using characters from the private key of the link as
-     * the secret key.
+     * Encrypts passwords using characters from the private key of the link as the secret key.
      *
      * @param pass Unencrypted password.
      * @return Base64 encoding of the encrypted password.
@@ -246,7 +255,7 @@ public class SerializationManager {
         final String ALGO = "AES";
         if (secretKeySpec == null) {
             byte[] privateKey = node.getLink().getHandler()
-                    .getConfig().getKeys().getPrivateKey().getEncoded();
+                                    .getConfig().getKeys().getPrivateKey().getEncoded();
             final int KEY_LEN = 16;
             byte[] key = new byte[KEY_LEN];
             System.arraycopy(privateKey, privateKey.length - KEY_LEN, key, 0, KEY_LEN);

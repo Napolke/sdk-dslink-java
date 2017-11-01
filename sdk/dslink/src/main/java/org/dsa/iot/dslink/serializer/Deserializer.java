@@ -1,9 +1,13 @@
 package org.dsa.iot.dslink.serializer;
 
-import java.util.*;
-import org.dsa.iot.dslink.node.*;
-import org.dsa.iot.dslink.node.value.*;
-import org.dsa.iot.dslink.util.json.*;
+import java.util.Map;
+import org.dsa.iot.dslink.node.Node;
+import org.dsa.iot.dslink.node.NodeManager;
+import org.dsa.iot.dslink.node.Writable;
+import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.node.value.ValueUtils;
+import org.dsa.iot.dslink.util.json.JsonObject;
 
 /**
  * Deserializes a JSON file into a node manager
@@ -23,6 +27,24 @@ public class Deserializer {
                         NodeManager nodeManager) {
         this.serializationManager = serializationManager;
         this.nodeManager = nodeManager;
+    }
+
+    /**
+     * Deserializes the object into the given node.  The node must be a member of the node manager
+     * graph this deserializer was created with.
+     *
+     * @param childJson Object to deserialize.
+     */
+    @SuppressWarnings("unchecked")
+    public void deserialize(Node parent, String childName, boolean encodeName,
+                            JsonObject childJson) {
+        if (parent.getChild(childName, encodeName) != null) {
+            throw new IllegalArgumentException("Duplicate name: " + childName);
+        }
+        Node newChild = new Node(childName, parent, parent.getLink(), encodeName);
+        childJson.remove("$name");
+        deserializeNode(newChild, childJson);
+        parent.addChild(newChild);
     }
 
     /**

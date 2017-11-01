@@ -1,10 +1,14 @@
 package org.dsa.iot.dslink.serializer;
 
-import java.util.*;
-import org.dsa.iot.dslink.node.*;
-import org.dsa.iot.dslink.node.value.*;
-import org.dsa.iot.dslink.util.*;
-import org.dsa.iot.dslink.util.json.*;
+import java.util.Map;
+import java.util.Set;
+import org.dsa.iot.dslink.node.Node;
+import org.dsa.iot.dslink.node.NodeManager;
+import org.dsa.iot.dslink.node.Writable;
+import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.StringUtils;
+import org.dsa.iot.dslink.util.json.JsonObject;
 
 /**
  * @author Samuel Grenier
@@ -38,6 +42,17 @@ public class Serializer {
             }
         }
         return top;
+    }
+
+    /**
+     * Serializes a node from the same graph as the node manager of this serializer.
+     * Can be used to more efficiently copy / rename nodes when paired with
+     * Deserializer.add(node, name, jsonObject).
+     */
+    public JsonObject serialize(Node node) {
+        JsonObject ret = new JsonObject();
+        serializeChildren(ret, node);
+        return ret;
     }
 
     private void serializeChildren(JsonObject out, Node parent) {
