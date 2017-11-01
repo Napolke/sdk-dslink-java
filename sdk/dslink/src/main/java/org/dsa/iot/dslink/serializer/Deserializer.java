@@ -33,10 +33,14 @@ public class Deserializer {
      * Deserializes the object into the given node.  The node must be a member of the node manager
      * graph this deserializer was created with.
      *
-     * @param childJson Object to deserialize.
+     * @param parent     The node to deserialize the new child into.
+     * @param childName  The name of the new child node.
+     * @param encodeName Whether or not encode the child name.
+     * @param childJson  Object to deserialize.
+     * @return The newly created child node.
      */
     @SuppressWarnings("unchecked")
-    public void deserialize(Node parent, String childName, boolean encodeName,
+    public Node deserialize(Node parent, String childName, boolean encodeName,
                             JsonObject childJson) {
         if (parent.getChild(childName, encodeName) != null) {
             throw new IllegalArgumentException("Duplicate name: " + childName);
@@ -45,6 +49,7 @@ public class Deserializer {
         childJson.remove("$name");
         deserializeNode(newChild, childJson);
         parent.addChild(newChild);
+        return newChild;
     }
 
     /**
